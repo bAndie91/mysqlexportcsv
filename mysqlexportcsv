@@ -11,11 +11,15 @@ $opt_pass = undef;
 $opt_dsn = "database=mysql";
 $opt_flushTables = 0;
 $opt_target = "./";
+$opt_dataonly = 0;
+$opt_structonly = 0;
 $Usage = <<EOT
-Usage: mysqlexportcsv [-F] [-Dupt <STR>] [db1[.table1] [db2[.table2] ...]]
+Usage: mysqlexportcsv [-Fsd] [-Dupt <STR>] [db1[.table1] [db2[.table2] ...]]
  Exports all tables unless db or table names are given
 Flags:
  -F, --flush   Flush all tables before lock
+ -s, --struct  Export only structure
+ -d, --data    Export only data
 Options:
  -D, --DSN     DSN (eg. "database=mysql;host=localhost;port=3306")
  -u, --user    Mysql username (env: DBI_USER)
@@ -46,6 +50,8 @@ GetOptions(
 	"DSN|D=s" => \$opt_dsn,
 	"flush|F!" => \$opt_flushTables,
 	"target|t=s" => \$opt_target,
+	"data|d!" => \$opt_dataonly,
+	"struct|s!" => \$opt_structonly,
 )or die $Usage;
 
 
@@ -91,27 +97,33 @@ if(!@Tables or @Databases)
 	undef $Tables_ref;
 }
 
-if(not $opt_flushTables)
+if($opt_flushTables)
 {
 	my $n = scalar @Tables;
 	msg "Locking $n tables ...";
 	$Db->do("LOCK TABLES " . join(',', map {"$_ READ"} @Tables));
 }
 
-msg "Exporting table structures ...";
-for my $dbtname (@Tables)
+if(!$opt_dataonly)
 {
-	my (undef, $create_stmt) = $Db->selectrow_array("SHOW CREATE TABLE $dbtname");
-	save_file("$dbtname.struct.sql", $create_stmt);
+	msg "Exporting table structures ...";
+	for my $dbtname (@Tables)
+	{
+		my (undef, $create_stmt) = $Db->selectrow_array("SHOW CREATE TABLE $dbtname");
+		save_file("$dbtname.struct.sql", $create_stmt);
+	}
 }
 
-msg "Exporting data ...";
-for my $dbtname (@Tables)
+if(!$opt_structonly)
 {
-	msg "- $dbtname";
-	$Db->do("SELECT * INTO OUTFILE '$opt_target/$dbtname.data.csv'
-	  FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\\\' LINES TERMINATED BY '\\n'
-	  FROM $dbtname");
+	msg "Exporting data ...";
+	for my $dbtname (@Tables)
+	{
+		msg "- $dbtname";
+		$Db->do("SELECT * INTO OUTFILE '$opt_target/$dbtname.data.csv'
+		  FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\\\' LINES TERMINATED BY '\\n'
+		  FROM $dbtname");
+	}
 }
 
 msg "Finishing ...";
