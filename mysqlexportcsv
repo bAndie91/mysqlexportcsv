@@ -99,7 +99,6 @@ if(not $opt_flushTables)
 }
 
 msg "Exporting table structures ...";
-msg "  outputs: DB.TABLE.struct.sql";
 for my $dbtname (@Tables)
 {
 	my (undef, $create_stmt) = $Db->selectrow_array("SHOW CREATE TABLE $dbtname");
@@ -107,10 +106,9 @@ for my $dbtname (@Tables)
 }
 
 msg "Exporting data ...";
-msg "  outputs on server side: mysql_data_dir/DB.TABLE.data.csv ...";
 for my $dbtname (@Tables)
 {
-	msg "  - $dbtname";
+	msg "- $dbtname";
 	$Db->do("SELECT * INTO OUTFILE '$opt_target/$dbtname.data.csv'
 	  FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\\\' LINES TERMINATED BY '\\n'
 	  FROM $dbtname");
