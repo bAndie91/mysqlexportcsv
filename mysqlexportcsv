@@ -1,0 +1,121 @@
+#!/usr/bin/env perl
+
+use DBI;
+use Data::Dumper;
+use Getopt::Long qw/:config no_ignore_case/;
+
+### VAR ###
+
+$opt_user = undef;
+$opt_pass = undef;
+$opt_dsn = "database=mysql";
+$opt_flushTables = 0;
+$opt_target = "./";
+$Usage = <<EOT
+Usage: mysqlexportcsv [-F] [-Dupt <STR>] [db1[.table1] [db2[.table2] ...]]
+ Exports all tables unless db or table names are given
+Flags:
+ -F, --flush   Flush all tables before lock
+Options:
+ -D, --DSN     DSN (eg. "database=mysql;host=localhost;port=3306")
+ -u, --user    Mysql username (env: DBI_USER)
+ -p, --pass    Mysql password (env: DBI_PASS)
+ -t, --target  Directory to export data on server side
+EOT
+;
+
+### SUB ###
+
+sub msg
+{
+	print STDERR "$_[0]\n";
+}
+sub save_file
+{
+	open my $fh, '>', $_[0] or die "$!\n";
+	print $fh $_[1] or die "$!\n";
+	close $fh or die "$!\n";
+}
+
+### MAIN ###
+
+Getopt::Long::Configure("bundling");
+GetOptions(
+	"user|u=s" => \$opt_user,
+	"pass|p=s" => \$opt_pass,
+	"DSN|D=s" => \$opt_dsn,
+	"flush|F!" => \$opt_flushTables,
+	"target|t=s" => \$opt_target,
+)or die $Usage;
+
+
+$opt_target =~ s{/*$}{/};
+$Db = DBI->connect("dbi:mysql:$opt_dsn", $opt_user, $opt_pass, {AutoCommit=>1, PrintError=>1, PrintWarn=>1, RaiseError=>1});
+@Databases = ();
+@Tables = ();
+
+if(@ARGV)
+{
+	@Tables = @ARGV;
+	push @Databases, $_ for grep {!/\./} @Tables;
+}
+
+if($opt_flushTables)
+{
+	msg "Flushing and locking all tables ...";
+	$Db->do("FLUSH TABLES WITH READ LOCK");
+}
+
+# if table names are not given at all,
+# or there are some db names
+if(!@Tables or @Databases)
+{
+	if(@Databases)
+	{
+		$schemata = "table_schema IN (" . map{"'$_'"} @Databases . ")";
+	}
+	else
+	{
+		$schemata = "table_schema != 'information_schema'";
+	}
+	
+	$Tables_ref = $Db->selectcol_arrayref(
+	 "SELECT CONCAT(table_schema, '.', table_name) AS dbtname
+	  FROM information_schema.tables 
+	  WHERE $schemata
+	    AND table_type = 'BASE TABLE'
+	    AND engine NOT IN ('PERFORMANCE_SCHEMA')
+	    AND NOT (table_schema = 'mysql' AND table_name LIKE '%\\_log')
+	 ",{Columns=>0});
+	push @Tables, @$Tables_ref;
+	undef $Tables_ref;
+}
+
+if(not $opt_flushTables)
+{
+	my $n = scalar @Tables;
+	msg "Locking $n tables ...";
+	$Db->do("LOCK TABLES " . join(',', map {"$_ READ"} @Tables));
+}
+
+msg "Exporting table structures ...";
+msg "  outputs: DB.TABLE.struct.sql";
+for my $dbtname (@Tables)
+{
+	my (undef, $create_stmt) = $Db->selectrow_array("SHOW CREATE TABLE $dbtname");
+	save_file("$dbtname.struct.sql", $create_stmt);
+}
+
+msg "Exporting data ...";
+msg "  outputs on server side: mysql_data_dir/DB.TABLE.data.csv ...";
+for my $dbtname (@Tables)
+{
+	msg "  - $dbtname";
+	$Db->do("SELECT * INTO OUTFILE '$opt_target/$dbtname.data.csv'
+	  FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\\\' LINES TERMINATED BY '\\n'
+	  FROM $dbtname");
+}
+
+msg "Finishing ...";
+$Db->do("UNLOCK TABLES");
+
