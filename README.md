@@ -1,5 +1,5 @@
 # mysqlexportcsv
-Export table data from mysql the fastest way on server side
+Export mysql data the fastest way on server side
 
 # Usage
 ```
