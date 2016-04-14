@@ -43,7 +43,7 @@ source dbname.tname.struct.sql;
 LOAD DATA INFILE 'dbname.tname.data.csv'
   INTO TABLE tname
   FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '\"' ESCAPED BY '\\'
-  LINES TERMINATED BY '\\n';
+  LINES TERMINATED BY '\n';
 ```
 
 # Caveats
