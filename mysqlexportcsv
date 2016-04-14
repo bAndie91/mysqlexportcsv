@@ -8,7 +8,7 @@ use Getopt::Long qw/:config no_ignore_case/;
 
 $opt_user = undef;
 $opt_pass = undef;
-$opt_dsn = "database=mysql";
+$opt_dsn = "dbname=mysql";
 $opt_flushTables = 0;
 $opt_target = "./";
 $opt_dataonly = 0;
@@ -21,7 +21,7 @@ Flags:
  -s, --struct  Export only structure
  -d, --data    Export only data
 Options:
- -D, --DSN     DSN (eg. "database=mysql;host=localhost;port=3306")
+ -D, --DSN     DSN (eg. "dbname=mysql;host=localhost;port=3306")
  -u, --user    Mysql username (env: DBI_USER)
  -p, --pass    Mysql password (env: DBI_PASS)
  -t, --target  Directory to export data on server side
