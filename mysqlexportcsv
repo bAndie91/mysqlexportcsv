@@ -97,7 +97,7 @@ if(!@Tables or @Databases)
 	undef $Tables_ref;
 }
 
-if($opt_flushTables)
+if(!$opt_flushTables)
 {
 	my $n = scalar @Tables;
 	msg "Locking $n tables ...";
