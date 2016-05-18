@@ -20,6 +20,7 @@ Flags:
  -F, --flush   Flush all tables before lock
  -s, --struct  Export only structure
  -d, --data    Export only data
+ -H, --shutdown Shut down mysql after export
 Options:
  -D, --DSN     DSN (eg. "dbname=mysql;host=localhost;port=3306")
  -u, --user    Mysql username (env: DBI_USER)
@@ -52,6 +53,7 @@ GetOptions(
 	"target|t=s" => \$opt_target,
 	"data|d!" => \$opt_dataonly,
 	"struct|s!" => \$opt_structonly,
+	"shutdown|H!" => \$opt_shutdown,
 )or die $Usage;
 
 
@@ -129,3 +131,9 @@ if(!$opt_structonly)
 msg "Finishing ...";
 $Db->do("UNLOCK TABLES");
 
+
+if($opt_shutdown)
+{
+	msg "Shutting down ...";
+	$Db->do("SHUTDOWN");
+}
