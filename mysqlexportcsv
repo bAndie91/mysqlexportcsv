@@ -10,7 +10,7 @@ $opt_user = undef;
 $opt_pass = undef;
 $opt_dsn = "dbname=mysql";
 $opt_flushTables = 0;
-$opt_target = "./";
+$opt_target = ".";
 $opt_dataonly = 0;
 $opt_structonly = 0;
 $Usage = <<EOT
@@ -57,15 +57,21 @@ GetOptions(
 )or die $Usage;
 
 
-$opt_target =~ s{/*$}{/};
+$opt_target =~ s{/*$}{};
 $Db = DBI->connect("dbi:mysql:$opt_dsn", $opt_user, $opt_pass, {AutoCommit=>1, PrintError=>1, PrintWarn=>1, RaiseError=>1});
 @Databases = ();
 @Tables = ();
 
-if(@ARGV)
+for my $spec (@ARGV)
 {
-	@Tables = @ARGV;
-	push @Databases, $_ for grep {!/\./} @Tables;
+	if($spec =~ /\./)
+	{
+		push @Tables, $spec;
+	}
+	else
+	{
+		push @Databases, $spec;
+	}
 }
 
 if($opt_flushTables)
@@ -74,13 +80,14 @@ if($opt_flushTables)
 	$Db->do("FLUSH TABLES WITH READ LOCK");
 }
 
+
 # if table names are not given at all,
 # or there are some db names
 if(!@Tables or @Databases)
 {
 	if(@Databases)
 	{
-		$schemata = "table_schema IN (" . map{"'$_'"} @Databases . ")";
+		$schemata = "table_schema IN (" . join(', ', map {"'$_'"} @Databases) . ")";
 	}
 	else
 	{
@@ -109,8 +116,10 @@ if(!$opt_flushTables)
 if(!$opt_dataonly)
 {
 	msg "Exporting table structures ...";
+	msg "Directory: [LOCAL] ./";
 	for my $dbtname (@Tables)
 	{
+		msg "- $dbtname";
 		my (undef, $create_stmt) = $Db->selectrow_array("SHOW CREATE TABLE $dbtname");
 		save_file("$dbtname.struct.sql", $create_stmt);
 	}
@@ -119,6 +128,7 @@ if(!$opt_dataonly)
 if(!$opt_structonly)
 {
 	msg "Exporting data ...";
+	msg "Directory: [REMOTE] $opt_target/";
 	for my $dbtname (@Tables)
 	{
 		msg "- $dbtname";
