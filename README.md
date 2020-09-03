@@ -66,3 +66,6 @@ Use ``--flush`` flag when tables created or dropped frequently. With it,
 mysqlexportcsv issues ``FLUSH TABLES WITH READ LOCK`` which locks
 globally, so table and database names can be enumerated comfortably.
 The only drawback of ``--flush`` is the unneccessary I/O.
+
+# issues
+Please submit issues via PR to some file `issue/TITLE.txt`.
