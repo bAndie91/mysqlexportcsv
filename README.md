@@ -68,4 +68,4 @@ globally, so table and database names can be enumerated comfortably.
 The only drawback of ``--flush`` is the unneccessary I/O.
 
 # issues
-Please submit issues via PR to some file `issue/TITLE.txt`.
+Please submit issues via PR to some file `<TITLE>.txt` or `<TITLE>.md` on `issues` branch.
